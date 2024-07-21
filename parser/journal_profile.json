@@ -1,0 +1,63 @@
+{
+    "FileHeader": [0, {
+        "Signature":[0, ["String", {
+            "length": 8
+        }]],
+        "compatible_flags": [8, ["unsigned long"]],
+        "incompatible_flags": [12, ["Flags", {
+            "target": "unsigned long",
+            "bitmap": {
+                "COMPRESSED_XZ": 0,
+                "COMPRESSED_LZ4": 1,
+                "KEYED_HASH": 2,
+                "COMPRESSED_ZSTD": 3,
+                "COMPACT": 4
+            }
+        }]],
+        "header_size": [88, ["long long"]],
+        "arena_size": [96, ["long long"]],
+        "n_objects": [144, ["unsigned long long"]],
+        "n_entries": [152, ["unsigned long long"]],
+        "tail_entry_seqnum": [160, ["unsigned long long"]]
+    }],
+
+    "ObjectHeader":[16, {
+        "Type": [0, ["Enumeration",{
+            "target": "unsigned char",
+            "choices": {
+                "0": "OBJECT_UNUSED",
+                "1": "OBJECT_DATA",
+                "2": "OBJECT_FIELD",
+                "3": "OBJECT_ENTRY",
+                "4": "OBJECT_DATA_HASH_TABLE",
+                "5": "OBJECT_FIELD_HASH_TABLE",
+                "6": "OBJECT_ENTRY_ARRAY",
+                "7": "OBJECT_TAG"
+            }
+        }]],
+        "flags": [1, ["unsigned char"]],
+        "__real_size": [8, ["long long"]]
+    }],
+
+    "DataObject": [0, {
+        "payload":[48,  ["String"]]
+    }],
+
+    "CompatDataObject": [0, {
+        "payload":[56,  ["String"]]
+    }],
+
+    "EntryObject": [48, {
+        "seqnum": [0, ["unsigned long long"]],
+        "realtime": [8, ["long long"]],
+        "monotonic": [16, ["long long"]]
+    }],
+
+    "CompatEntryItem": [4, {
+        "object": [0, ["unsigned long"]]
+    }],
+
+    "EntryItem": [16, {
+        "object": [0, ["unsigned long long"]]
+    }]
+}

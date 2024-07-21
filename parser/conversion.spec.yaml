@@ -1,0 +1,12 @@
+Module: parser
+Profile: JournalProfile
+Filename: journal_profile.json
+GenerateDebugString: true
+Structs:
+  - FileHeader
+  - ObjectHeader
+  - DataObject
+  - CompatDataObject
+  - EntryObject
+  - CompatEntryItem
+  - EntryItem

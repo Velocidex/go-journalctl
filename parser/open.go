@@ -3,6 +3,7 @@ package parser
 import (
 	"errors"
 	"io"
+	"time"
 
 	"github.com/Velocidex/ordereddict"
 )
@@ -18,7 +19,9 @@ type JournalFile struct {
 	ArenaSize  int64
 
 	// The minimum sequence number to process
-	MinSeq uint64
+	MinSeq  uint64
+	MinTime time.Time
+	MaxTime time.Time
 
 	RawLogs bool
 }
@@ -34,6 +37,18 @@ func (self *JournalFile) GetLastSequence() uint64 {
 func (self *JournalFile) GetLogs() chan *ordereddict.Dict {
 	output_chan := make(chan *ordereddict.Dict)
 
+	var time_start, time_end int64
+
+	if !self.MinTime.IsZero() {
+		time_start = self.MinTime.UnixNano() / 1000
+	}
+
+	if !self.MaxTime.IsZero() {
+		time_end = self.MaxTime.UnixNano() / 1000
+	} else {
+		time_end = int64(^uint64(0) >> 1)
+	}
+
 	go func() {
 		defer close(output_chan)
 
@@ -45,11 +60,18 @@ func (self *JournalFile) GetLogs() chan *ordereddict.Dict {
 			switch obj.Type().Name {
 			case "OBJECT_ENTRY":
 				// OBJECT_ENTRY follows the object header
-				entry := self.Profile.EntryObject(self.Reader, i+int64(obj.Size()))
+				entry := self.Profile.EntryObject(
+					self.Reader, i+int64(obj.Size()))
 
-				// Only forward entries with sequence number higher
-				// than the minimum required
-				if entry.seqnum() > self.MinSeq {
+				rt := entry.realtime()
+
+				// Check the entry time is within range.
+				if rt >= time_start && rt <= time_end &&
+
+					// Only forward entries with sequence number
+					// higher than the minimum required
+					entry.seqnum() > self.MinSeq {
+
 					var row *ordereddict.Dict
 					if self.RawLogs {
 						row = entry.GetRaw(self, obj_size)

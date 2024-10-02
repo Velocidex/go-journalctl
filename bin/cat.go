@@ -25,6 +25,12 @@ var (
 	cat_command_follow = cat_command.Flag(
 		"follow", "Follow the file and emit additional entried.",
 	).Short('f').Bool()
+
+	cat_command_start = cat_command.Flag(
+		"start", "Start time in RFC3339 format eg 2014-11-12T11:45:26.371Z").String()
+
+	cat_command_end = cat_command.Flag(
+		"end", "End time in RFC3339 format eg 2014-11-12T11:45:26.371Z ").String()
 )
 
 func doCat() {
@@ -36,6 +42,16 @@ func doCat() {
 
 	if *cat_command_raw {
 		journal.RawLogs = true
+	}
+
+	if *cat_command_start != "" {
+		journal.MinTime, err = time.Parse(time.RFC3339, *cat_command_start)
+		kingpin.FatalIfError(err, "Can not parse start time, use RFC3339 format, eg 2014-11-12T11:45:26.371Z")
+	}
+
+	if *cat_command_end != "" {
+		journal.MaxTime, err = time.Parse(time.RFC3339, *cat_command_end)
+		kingpin.FatalIfError(err, "Can not parse end time, use RFC3339 format, eg 2014-11-12T11:45:26.371Z")
 	}
 
 	if *cat_command_follow {

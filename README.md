@@ -1,6 +1,6 @@
 # Go parser for systemd journal log files.
 
-The foramt is documented here https://systemd.io/JOURNAL_FILE_FORMAT/
+The format is documented here https://systemd.io/JOURNAL_FILE_FORMAT/
 
 This parser is written in pure Go (rather than binding the system C
 libraries) which makes it portable to other operating systems.

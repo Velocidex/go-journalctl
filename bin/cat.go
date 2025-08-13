@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"time"
 
@@ -16,7 +17,7 @@ var (
 
 	cat_command_file_arg = cat_command.Arg(
 		"file", "The journal file to inspect",
-	).Required().OpenFile(os.O_RDONLY, os.FileMode(0666))
+	).Required().String()
 
 	cat_command_raw = cat_command.Flag(
 		"raw", "Emit raw events instead",
@@ -34,8 +35,36 @@ var (
 )
 
 func doCat() {
-	reader, _ := ntfs_parser.NewPagedReader(
-		getReader(*cat_command_file_arg), 1024, 10000)
+	ctx, cancel := install_sig_handler()
+	defer cancel()
+
+	if *cat_command_follow {
+		for event := range parser.WatchFile(
+			ctx, func() (io.ReaderAt, func(), error) {
+				// Open the file fresh each iteration in case the file
+				// was rotated. See
+				// https://github.com/Velocidex/go-journalctl/issues/4
+				fd, err := os.Open(*cat_command_file_arg)
+				if err != nil {
+					return nil, nil, err
+				}
+				reader, err := ntfs_parser.NewPagedReader(
+					fd, 1024, 10000)
+
+				return reader, func() {
+					fd.Close()
+				}, err
+			}) {
+			fmt.Printf("%v\n", event)
+		}
+
+		return
+	}
+
+	fd, err := os.Open(*cat_command_file_arg)
+	kingpin.FatalIfError(err, "Can not open file")
+
+	reader, _ := ntfs_parser.NewPagedReader(fd, 1024, 10000)
 
 	journal, err := parser.OpenFile(reader)
 	kingpin.FatalIfError(err, "Can not open filesystem")
@@ -54,22 +83,7 @@ func doCat() {
 		kingpin.FatalIfError(err, "Can not parse end time, use RFC3339 format, eg 2014-11-12T11:45:26.371Z")
 	}
 
-	if *cat_command_follow {
-		// Only print newer events from now on.
-		journal.MinSeq = journal.GetLastSequence()
-
-		for {
-			last_seq := journal.GetLastSequence()
-			if journal.MinSeq != last_seq {
-				PrintOnce(journal)
-				journal.MinSeq = last_seq
-			}
-			time.Sleep(time.Second)
-			reader.Flush()
-		}
-	} else {
-		PrintOnce(journal)
-	}
+	PrintOnce(journal)
 }
 
 func PrintOnce(journal *parser.JournalFile) {

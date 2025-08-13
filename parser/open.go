@@ -20,6 +20,7 @@ type JournalFile struct {
 
 	// The minimum sequence number to process
 	MinSeq  uint64
+	MaxSeq  uint64
 	MinTime time.Time
 	MaxTime time.Time
 
@@ -80,6 +81,10 @@ func (self *JournalFile) GetLogs() chan *ordereddict.Dict {
 					}
 
 					output_chan <- row
+				}
+
+				if self.MaxSeq > 0 && entry.seqnum() >= self.MaxSeq {
+					break
 				}
 			}
 

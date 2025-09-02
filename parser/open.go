@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"context"
 	"errors"
 	"io"
 	"time"
@@ -35,7 +36,7 @@ func (self *JournalFile) GetLastSequence() uint64 {
 	return self.Header.tail_entry_seqnum()
 }
 
-func (self *JournalFile) GetLogs() chan *ordereddict.Dict {
+func (self *JournalFile) GetLogs(ctx context.Context) chan *ordereddict.Dict {
 	output_chan := make(chan *ordereddict.Dict)
 
 	var time_start, time_end int64
@@ -80,7 +81,12 @@ func (self *JournalFile) GetLogs() chan *ordereddict.Dict {
 						row = entry.GetParsed(self, obj_size)
 					}
 
-					output_chan <- row
+					select {
+					case <-ctx.Done():
+						return
+					case output_chan <- row:
+						// Sent log to channel
+					}
 				}
 
 				if self.MaxSeq > 0 && entry.seqnum() >= self.MaxSeq {

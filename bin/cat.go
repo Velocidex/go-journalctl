@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -87,7 +88,7 @@ func doCat() {
 }
 
 func PrintOnce(journal *parser.JournalFile) {
-	for log := range journal.GetLogs() {
+	for log := range journal.GetLogs(context.Background()) {
 		fmt.Printf("%v\n", log)
 	}
 }

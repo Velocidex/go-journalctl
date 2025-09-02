@@ -48,7 +48,7 @@ func WatchFile(ctx context.Context,
 					journal.MaxSeq = last_seq
 					seq = int64(last_seq)
 
-					row_chan := journal.GetLogs()
+					row_chan := journal.GetLogs(context.Background())
 					for {
 						select {
 						case <-ctx.Done():

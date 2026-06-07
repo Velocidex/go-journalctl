@@ -1,12 +1,15 @@
 package parser
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"sync"
 
 	"github.com/klauspost/compress/zstd"
 	"github.com/pierrec/lz4/v4"
+	"github.com/ulikunitz/xz"
 )
 
 // Compression flag bits in ObjectHeader.flags(); see OBJECT_COMPRESSED_* in
@@ -61,15 +64,30 @@ func decompressLZ4(compressed []byte) ([]byte, error) {
 	return dst[:n], nil
 }
 
+// XZ (oldest journals, systemd < 216): payload is a raw XZ stream.
+func decompressXZ(compressed []byte) ([]byte, error) {
+	r, err := xz.NewReader(bytes.NewReader(compressed))
+	if err != nil {
+		return nil, fmt.Errorf("xz: failed to init reader: %w", err)
+	}
+	out, err := io.ReadAll(r)
+	if err != nil {
+		return nil, fmt.Errorf("xz: failed to decompress: %w", err)
+	}
+	return out, nil
+}
+
 // decompressPayload decompresses a DATA object payload if the object flags
 // indicate compression, then returns the raw bytes.
 func decompressPayload(flags byte, compressed []byte) ([]byte, error) {
 	switch {
+	case flags&objectCompressedXZ != 0:
+		return decompressXZ(compressed)
 	case flags&objectCompressedZSTD != 0:
 		return decompressZSTD(compressed)
 	case flags&objectCompressedLZ4 != 0:
 		return decompressLZ4(compressed)
 	default:
-		return nil, fmt.Errorf("lz4: unknown compression flags: 0x%02x", flags)
+		return nil, fmt.Errorf("unknown compression flags: 0x%02x", flags)
 	}
 }

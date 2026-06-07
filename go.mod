@@ -17,5 +17,6 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.21 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
+	github.com/ulikunitz/xz v0.5.15 // indirect
 	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
 )

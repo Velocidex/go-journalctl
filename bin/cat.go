@@ -69,6 +69,7 @@ func doCat() {
 
 	journal, err := parser.OpenFile(reader)
 	kingpin.FatalIfError(err, "Can not open filesystem")
+	defer journal.Close()
 
 	if *cat_command_raw {
 		journal.RawLogs = true

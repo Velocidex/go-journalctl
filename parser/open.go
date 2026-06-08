@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/Velocidex/ordereddict"
+	"github.com/klauspost/compress/zstd"
 )
 
 type JournalFile struct {
@@ -26,6 +28,19 @@ type JournalFile struct {
 	MaxTime time.Time
 
 	RawLogs bool
+
+	mu           sync.Mutex
+	zstd_decoder *zstd.Decoder
+}
+
+func (self *JournalFile) Close() {
+	self.mu.Lock()
+	defer self.mu.Unlock()
+
+	if self.zstd_decoder != nil {
+		self.zstd_decoder.Close()
+	}
+	self.zstd_decoder = nil
 }
 
 func (self *JournalFile) DebugString() string {

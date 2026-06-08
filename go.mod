@@ -1,10 +1,11 @@
 module github.com/Velocidex/go-journalctl
 
-go 1.22.2
+go 1.24
 
 require (
 	github.com/Velocidex/ordereddict v0.0.0-20230909174157-2aa49cc5d11d
 	github.com/alecthomas/kingpin/v2 v2.4.0
+	github.com/klauspost/compress v1.18.6
 	www.velocidex.com/golang/go-ntfs v0.2.0
 )
 
@@ -14,6 +15,8 @@ require (
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/kr/text v0.2.0 // indirect
+	github.com/pierrec/lz4/v4 v4.1.21 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
+	github.com/ulikunitz/xz v0.5.15 // indirect
 	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
 )

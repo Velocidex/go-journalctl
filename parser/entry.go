@@ -112,6 +112,22 @@ func (self *EntryObject) GetRaw(ctx *JournalFile, size int64) *ordereddict.Dict 
 	return result
 }
 
+func (self *JournalFile) read_payload(reader interface {
+	ReadAt([]byte, int64) (int, error)
+}, offset, length int64, flags byte) string {
+	if flags&(objectCompressedXZ|objectCompressedLZ4|objectCompressedZSTD) != 0 {
+		compressed := make([]byte, length)
+		n, err := reader.ReadAt(compressed, offset)
+		if err == nil || err.Error() == "EOF" {
+			if decompressed, err2 := decompressPayload(
+				self, flags, compressed[:n]); err2 == nil {
+				return string(decompressed)
+			}
+		}
+	}
+	return ParseString(reader, offset, length)
+}
+
 func (self *EntryObject) items_compact(ctx *JournalFile, size int64) []string {
 	var res []string
 
@@ -135,11 +151,11 @@ func (self *EntryObject) items_compact(ctx *JournalFile, size int64) []string {
 			payload_len := obj_size - int64(data_obj.Size()) -
 				self.Profile.Off_CompatDataObject_payload
 
-			// Start reading after the object header
-			payload := ParseString(self.Reader,
-				obj_offset+int64(data_obj.Size())+
-					self.Profile.Off_CompatDataObject_payload,
-				payload_len)
+			payload_offset := obj_offset + int64(data_obj.Size()) +
+				self.Profile.Off_CompatDataObject_payload
+
+			payload := ctx.read_payload(
+				self.Reader, payload_offset, payload_len, data_obj.flags())
 
 			res = append(res, payload)
 		}
@@ -172,11 +188,11 @@ func (self *EntryObject) items_regular(ctx *JournalFile, size int64) []string {
 			payload_len := obj_size - int64(data_obj.Size()) -
 				self.Profile.Off_DataObject_payload
 
-			// Start reading after the object header
-			payload := ParseString(self.Reader,
-				obj_offset+int64(data_obj.Size())+
-					self.Profile.Off_DataObject_payload,
-				payload_len)
+			payload_offset := obj_offset + int64(data_obj.Size()) +
+				self.Profile.Off_DataObject_payload
+
+			payload := ctx.read_payload(
+				self.Reader, payload_offset, payload_len, data_obj.flags())
 
 			res = append(res, payload)
 		}

@@ -24,6 +24,7 @@ func doInfo() {
 
 	journal, err := parser.OpenFile(reader)
 	kingpin.FatalIfError(err, "Can not open filesystem")
+	defer journal.Close()
 
 	fmt.Printf("%v\n", journal.DebugString())
 }

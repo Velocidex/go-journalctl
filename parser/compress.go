@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"sync"
 
 	"github.com/klauspost/compress/zstd"
 	"github.com/pierrec/lz4/v4"
@@ -20,25 +19,25 @@ const (
 	objectCompressedZSTD = 0x04
 )
 
-var (
-	zstd_decoder      *zstd.Decoder
-	zstd_decoder_once sync.Once
-)
+func (self *JournalFile) getZSTDDecoder() (res *zstd.Decoder, err error) {
+	self.mu.Lock()
+	defer self.mu.Unlock()
 
-func getZSTDDecoder() (*zstd.Decoder, error) {
-	var err error
-	zstd_decoder_once.Do(func() {
-		zstd_decoder, err = zstd.NewReader(nil, zstd.WithDecoderConcurrency(0))
-	})
-	return zstd_decoder, err
+	if self.zstd_decoder != nil {
+		return self.zstd_decoder, nil
+	}
+
+	self.zstd_decoder, err = zstd.NewReader(
+		nil, zstd.WithDecoderConcurrency(0))
+	return self.zstd_decoder, err
 }
 
 // ZSTD: payload is a raw ZSTD frame (starts with magic 0xFD2FB528)
-func decompressZSTD(compressed []byte) ([]byte, error) {
+func decompressZSTD(ctx *JournalFile, compressed []byte) ([]byte, error) {
 	if len(compressed) < 4 {
 		return nil, fmt.Errorf("zstd: payload too short (%d bytes)", len(compressed))
 	}
-	dec, err := getZSTDDecoder()
+	dec, err := ctx.getZSTDDecoder()
 	if err != nil {
 		return nil, fmt.Errorf("zstd: failed to init decoder: %w", err)
 	}
@@ -79,12 +78,13 @@ func decompressXZ(compressed []byte) ([]byte, error) {
 
 // decompressPayload decompresses a DATA object payload if the object flags
 // indicate compression, then returns the raw bytes.
-func decompressPayload(flags byte, compressed []byte) ([]byte, error) {
+func decompressPayload(
+	ctx *JournalFile, flags byte, compressed []byte) ([]byte, error) {
 	switch {
 	case flags&objectCompressedXZ != 0:
 		return decompressXZ(compressed)
 	case flags&objectCompressedZSTD != 0:
-		return decompressZSTD(compressed)
+		return decompressZSTD(ctx, compressed)
 	case flags&objectCompressedLZ4 != 0:
 		return decompressLZ4(compressed)
 	default:

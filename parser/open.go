@@ -80,6 +80,9 @@ func (self *JournalFile) GetLogs(ctx context.Context) chan *ordereddict.Dict {
 				entry := self.Profile.EntryObject(
 					self.Reader, i+int64(obj.Size()))
 
+				// obj_size includes the object header, the entry does not
+				entry_size := obj_size - int64(obj.Size())
+
 				rt := entry.realtime()
 
 				// Check the entry time is within range.
@@ -91,9 +94,9 @@ func (self *JournalFile) GetLogs(ctx context.Context) chan *ordereddict.Dict {
 
 					var row *ordereddict.Dict
 					if self.RawLogs {
-						row = entry.GetRaw(self, obj_size)
+						row = entry.GetRaw(self, entry_size)
 					} else {
-						row = entry.GetParsed(self, obj_size)
+						row = entry.GetParsed(self, entry_size)
 					}
 
 					select {

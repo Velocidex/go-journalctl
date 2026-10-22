@@ -151,6 +151,12 @@ func (self *EntryObject) items_compact(ctx *JournalFile, size int64) []string {
 			payload_len := obj_size - int64(data_obj.Size()) -
 				self.Profile.Off_CompatDataObject_payload
 
+			// A torn write (e.g. a disk snapshot taken mid-append) leaves a size
+			// that cannot hold the payload or runs past the file.
+			if payload_len < 0 || payload_len > ctx.ArenaSize {
+				break
+			}
+
 			payload_offset := obj_offset + int64(data_obj.Size()) +
 				self.Profile.Off_CompatDataObject_payload
 
@@ -187,6 +193,12 @@ func (self *EntryObject) items_regular(ctx *JournalFile, size int64) []string {
 			// offset within the CompatDataObject
 			payload_len := obj_size - int64(data_obj.Size()) -
 				self.Profile.Off_DataObject_payload
+
+			// A torn write (e.g. a disk snapshot taken mid-append) leaves a size
+			// that cannot hold the payload or runs past the file.
+			if payload_len < 0 || payload_len > ctx.ArenaSize {
+				break
+			}
 
 			payload_offset := obj_offset + int64(data_obj.Size()) +
 				self.Profile.Off_DataObject_payload

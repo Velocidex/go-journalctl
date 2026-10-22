@@ -128,3 +128,22 @@ func eventData(row *ordereddict.Dict) *ordereddict.Dict {
 	value, _ := row.Get("EventData")
 	return value.(*ordereddict.Dict)
 }
+
+// A crash-consistent disk snapshot can catch journald mid-append: the ENTRY is written but a DATA
+// object after it still reads size 0, which made the payload length negative and panicked.
+func TestGetLogsSkipsDataObjectWithCorruptSize(t *testing.T) {
+	journal := compactJournalWithXZDataAfterEntry()
+	le := binary.LittleEndian
+	le.PutUint32(journal[480+16+48+4:], 552) // the ENTRY's second item -> the DATA object after it
+	journal[552+1] = 0                       // uncompressed
+	le.PutUint64(journal[552+8:], 0)         // and its size never written
+
+	rows := readLogs(t, bytes.NewReader(journal))
+
+	if len(rows) != 1 {
+		t.Fatalf("got %d entries, want 1", len(rows))
+	}
+	if got, _ := eventData(rows[0]).GetString("MESSAGE"); got != "hello" {
+		t.Errorf("got MESSAGE %q, want hello", got)
+	}
+}

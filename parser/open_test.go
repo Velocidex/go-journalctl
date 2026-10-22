@@ -13,20 +13,21 @@ import (
 	"github.com/Velocidex/ordereddict"
 )
 
+// Object offsets in compactJournalWithXZDataAfterEntry.
+const (
+	headerSize = 272
+	dataA      = 272 // MESSAGE=hello
+	dataB      = 360 // PRIORITY=6
+	entryArray = 448 // 0x1c0, the 01 at byte 257 of the header
+	entry      = 480
+	xzData     = 552
+	fileEnd    = 4096 // GetLogs stops at arena_size, not header_size+arena_size
+)
+
 // A compact journal holding two DATA objects, an ENTRY_ARRAY, one ENTRY with two items, and an
 // xz flagged DATA object written directly after the ENTRY. Walking 16 bytes past the ENTRY reads
 // that DATA's type and flags (01 01) as an item offset of 257, which lands in the file header.
 func compactJournalWithXZDataAfterEntry() []byte {
-	const (
-		headerSize = 272
-		dataA      = 272 // MESSAGE=hello
-		dataB      = 360 // PRIORITY=6
-		entryArray = 448 // 0x1c0, the 01 at byte 257 of the header
-		entry      = 480
-		xzData     = 552
-		fileEnd    = 4096 // GetLogs stops at arena_size, not header_size+arena_size
-	)
-
 	b := make([]byte, fileEnd)
 	le := binary.LittleEndian
 
@@ -76,6 +77,25 @@ func TestGetLogsStopsAtEndOfEntryObject(t *testing.T) {
 	}
 	if got, _ := fields.GetString("MESSAGE"); got != "hello" {
 		t.Errorf("got MESSAGE %q, want hello", got)
+	}
+}
+
+// A DATA object whose size field reads 0, as in a torn or partly written journal, gives a payload
+// length of 0 - 16 - 56 = -72. It sits after the ENTRY because the object walk stops at a zero size.
+func TestGetLogsSkipsDataObjectWithZeroSize(t *testing.T) {
+	journal := compactJournalWithXZDataAfterEntry()
+	journal[xzData+1] = 0
+	binary.LittleEndian.PutUint64(journal[xzData+8:], 0)
+	binary.LittleEndian.PutUint32(journal[entry+16+48+4:], xzData)
+
+	rows := readLogs(t, bytes.NewReader(journal))
+
+	if len(rows) != 1 {
+		t.Fatalf("got %d entries, want 1", len(rows))
+	}
+	fields := eventData(rows[0])
+	if got := fmt.Sprint(fields.Keys()); got != "[MESSAGE]" {
+		t.Errorf("got fields %s, want [MESSAGE]", got)
 	}
 }
 

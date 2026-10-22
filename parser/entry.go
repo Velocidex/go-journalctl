@@ -154,10 +154,14 @@ func (self *EntryObject) items_compact(ctx *JournalFile, size int64) []string {
 			payload_offset := obj_offset + int64(data_obj.Size()) +
 				self.Profile.Off_CompatDataObject_payload
 
-			payload := ctx.read_payload(
-				self.Reader, payload_offset, payload_len, data_obj.flags())
+			// A torn or partly written journal can hold a DATA
+			// object whose size is too small for any payload.
+			if payload_len > 0 {
+				payload := ctx.read_payload(
+					self.Reader, payload_offset, payload_len, data_obj.flags())
 
-			res = append(res, payload)
+				res = append(res, payload)
+			}
 		}
 		i += int64(item.Size())
 	}
@@ -191,10 +195,14 @@ func (self *EntryObject) items_regular(ctx *JournalFile, size int64) []string {
 			payload_offset := obj_offset + int64(data_obj.Size()) +
 				self.Profile.Off_DataObject_payload
 
-			payload := ctx.read_payload(
-				self.Reader, payload_offset, payload_len, data_obj.flags())
+			// A torn or partly written journal can hold a DATA
+			// object whose size is too small for any payload.
+			if payload_len > 0 {
+				payload := ctx.read_payload(
+					self.Reader, payload_offset, payload_len, data_obj.flags())
 
-			res = append(res, payload)
+				res = append(res, payload)
+			}
 		}
 		i += int64(item.Size())
 	}
